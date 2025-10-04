@@ -1,0 +1,10 @@
+{
+    "objects": [
+        {
+            "type": "obj",
+            "name": "Wahoo",
+            "filename": "mesh.obj",
+            "texture": "material_0.png"
+        }
+    ]
+}

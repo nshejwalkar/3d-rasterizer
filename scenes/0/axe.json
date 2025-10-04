@@ -1,0 +1,10 @@
+{
+    "objects": [
+        {
+            "type": "obj",
+            "name": "axe",
+            "filename": "assignment_package\\scenes\\0/axe.obj",
+            "texture": "input.png"
+        }
+    ]
+}
