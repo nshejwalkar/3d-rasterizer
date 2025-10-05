@@ -7,14 +7,15 @@
 #include "debug.h"
 #include "camera.h"
 #include <algorithm>
+#include "polygon.h"
 
 Rasterizer::Rasterizer(const std::vector<Polygon>& polygons)
     : m_polygons(polygons)
 {}
 
 float Rasterizer::computeSubTriangleArea(const glm::vec2& v1,
-                                       const glm::vec2& v2,
-                                       const glm::vec2& v3) const {
+                                         const glm::vec2& v2,
+                                         const glm::vec2& v3) const {
     const glm::vec2 a = v2 - v1;
     const glm::vec2 b = v3 - v1;
     const float twiceArea = a.x * b.y - a.y * b.x;
@@ -22,6 +23,7 @@ float Rasterizer::computeSubTriangleArea(const glm::vec2& v1,
 }
 
 
+// DONT USE THIS FUNCTION FOR 3D
 BarycentricWeights Rasterizer::ComputeBarycentricWeights(const Polygon& p,
                                                          const Triangle& t,
                                                          const glm::vec2 &fragPos) const {
@@ -34,9 +36,9 @@ BarycentricWeights Rasterizer::ComputeBarycentricWeights(const Polygon& p,
     float s1 = computeSubTriangleArea(fragPos, v2, v3) / s;
     float s2 = computeSubTriangleArea(fragPos, v1, v3) / s;
     float s3 = computeSubTriangleArea(fragPos, v2, v1) / s;
+    float z = 0.f;
 
-    return BarycentricWeights(s1, s2, s3);
-
+    return BarycentricWeights(s1, s2, s3, z);
 }
 
 bool Rasterizer::ConsultAndWriteToZBuffer(const int x, const int y, const float candidate_z) {
@@ -54,10 +56,10 @@ void Rasterizer::resetZBuffer() {
 
 // pass triangle by copy and fill in proj_verts
 Triangle Rasterizer::projectTriangleFromWorldtoPixelSpace(const glm::mat4 proj_mat,
-                                                           const glm::mat4 view_mat,
-                                                           const Polygon& p,
-                                                           const Triangle t,
-                                                           std::array<Vertex,3>& pv) const {
+                                                          const glm::mat4 view_mat,
+                                                          const Polygon& p,
+                                                          const Triangle t,
+                                                          std::array<Vertex,3>& pv) const {
 
     Triangle proj_tri;  // same indices in p.m_verts
     std::copy(std::begin(t.m_indices), std::end(t.m_indices), std::begin(proj_tri.m_indices));
@@ -69,9 +71,9 @@ Triangle Rasterizer::projectTriangleFromWorldtoPixelSpace(const glm::mat4 proj_m
         unhomo /= unhomo.w;
 
         vert.m_pos = {(unhomo.x+1)*(SCREEN_WIDTH/2),
-                       (1-unhomo.y)*(SCREEN_HEIGHT/2),
-                       unhomo.z,
-                       unhomo.w};
+                      (1-unhomo.y)*(SCREEN_HEIGHT/2),
+                      unhomo.z,
+                      unhomo.w};
 
         pv[i] = vert;
     }
@@ -80,9 +82,9 @@ Triangle Rasterizer::projectTriangleFromWorldtoPixelSpace(const glm::mat4 proj_m
 };
 
 // calculate this for every pixel. triangle is in pixel space
-float Rasterizer::perspectiveCorrectInterpolateZ(const Triangle& t,
-                                                 std::array<Vertex,3>& pv,
-                                                 const glm::vec2& fragPos) const {
+BarycentricWeights Rasterizer::perspectiveCorrectBarycentricWeights(const Triangle& t,
+                                                                    std::array<Vertex,3>& pv,
+                                                                    const glm::vec2& fragPos) const {
     glm::vec2 v1(pv[0].m_pos.x, pv[0].m_pos.y);
     glm::vec2 v2(pv[1].m_pos.x, pv[1].m_pos.y);
     glm::vec2 v3(pv[2].m_pos.x, pv[2].m_pos.y);
@@ -96,7 +98,7 @@ float Rasterizer::perspectiveCorrectInterpolateZ(const Triangle& t,
     float z2 = pv[1].m_pos.z;
     float z3 = pv[2].m_pos.z;
 
-    return 1.f/(s1/z1 + s2/z2 + s3/z3);
+    return BarycentricWeights(s1, s2, s3, 1.f/(s1/z1 + s2/z2 + s3/z3));
 }
 
 // returns the same type that was put in
@@ -104,49 +106,22 @@ template <typename T>
 T Rasterizer::perspectiveCorrectInterpolateAttrib(const T &v1attrib,
                                                   const T &v2attrib,
                                                   const T &v3attrib,
-                                                  const Triangle& t,
-                                                  std::array<Vertex,3>& pv,
-                                                  const glm::vec2& fragPos) const {
+                                                  const BarycentricWeights& bw,
+                                                  std::array<Vertex,3>& pv) const {
     glm::vec2 v1(pv[0].m_pos.x, pv[0].m_pos.y);
     glm::vec2 v2(pv[1].m_pos.x, pv[1].m_pos.y);
     glm::vec2 v3(pv[2].m_pos.x, pv[2].m_pos.y);
-
-    float s = computeSubTriangleArea(v1, v2, v3);
-    float s1 = computeSubTriangleArea(fragPos, v2, v3) / s;
-    float s2 = computeSubTriangleArea(fragPos, v1, v3) / s;
-    float s3 = computeSubTriangleArea(fragPos, v2, v1) / s;
 
     float z1 = pv[0].m_pos.z;
     float z2 = pv[1].m_pos.z;
     float z3 = pv[2].m_pos.z;
 
-    float pc_z = 1.f/(s1/z1 + s2/z2 + s3/z3);
+    float s1 = bw.s1;
+    float s2 = bw.s2;
+    float s3 = bw.s3;
+    float pc_z = bw.pc_z;
 
     return pc_z*((v1attrib*s1/z1) + (v2attrib*s2/z2) + (v3attrib*s3/z3));
-}
-
-glm::vec4 Rasterizer::perspectiveCorrectInterpolateAttrib(const glm::vec4 &n1,
-                                                        const glm::vec4 &n2,
-                                                        const glm::vec4 &n3,
-                                                        const Triangle& t,
-                                                        std::array<Vertex,3>& pv,
-                                                          const glm::vec2& fragPos) const {
-    glm::vec2 v1(pv[0].m_pos.x, pv[0].m_pos.y);
-    glm::vec2 v2(pv[1].m_pos.x, pv[1].m_pos.y);
-    glm::vec2 v3(pv[2].m_pos.x, pv[2].m_pos.y);
-
-    float s = computeSubTriangleArea(v1, v2, v3);
-    float s1 = computeSubTriangleArea(fragPos, v2, v3) / s;
-    float s2 = computeSubTriangleArea(fragPos, v1, v3) / s;
-    float s3 = computeSubTriangleArea(fragPos, v2, v1) / s;
-
-    float z1 = pv[0].m_pos.z;
-    float z2 = pv[1].m_pos.z;
-    float z3 = pv[2].m_pos.z;
-
-    float pc_z = 1.f/(s1/z1 + s2/z2 + s3/z3);
-
-    return pc_z*((n1*s1/z1) + (n2*s2/z2) + (n3*s3/z3));
 }
 
 void Rasterizer::RenderTriangle(const Polygon& p,
@@ -154,7 +129,7 @@ void Rasterizer::RenderTriangle(const Polygon& p,
                                 std::array<Vertex,3>& proj_verts,
                                 QImage& result) {
     // we have already computed all bounding boxes
-    if (t.offScreen) {LOG("OFFSCREEN"); return;}
+    if (t.offScreen) {/*LOG("OFFSCREEN");*/ return;}
 
     Vertex vert0 = proj_verts[0];
     Vertex vert1 = proj_verts[1];
@@ -198,29 +173,26 @@ void Rasterizer::RenderTriangle(const Polygon& p,
 
             // BarycentricWeights bw = ComputeBarycentricWeights(p, t, glm::vec2(x_i, scanline));
             // FOR 3D: compute cand_z using bw
-            float z = perspectiveCorrectInterpolateZ(t, proj_verts, glm::vec2(x_i, scanline));
+            const BarycentricWeights pc_bw = perspectiveCorrectBarycentricWeights(t, proj_verts, glm::vec2(x_i, scanline));
 
-            if (!ConsultAndWriteToZBuffer(x_i, scanline, z)) {
+            if (!ConsultAndWriteToZBuffer(x_i, scanline, pc_bw.pc_z)) {
                 continue;
             }
             float u = perspectiveCorrectInterpolateAttrib(vert0.m_uv[0],
                                                           vert1.m_uv[0],
                                                           vert2.m_uv[0],
-                                                          t,
-                                                          proj_verts,
-                                                          glm::vec2(x_i, scanline));
+                                                          pc_bw,
+                                                          proj_verts);
             float v = perspectiveCorrectInterpolateAttrib(vert0.m_uv[1],
                                                           vert1.m_uv[1],
                                                           vert2.m_uv[1],
-                                                          t,
-                                                          proj_verts,
-                                                          glm::vec2(x_i, scanline));
+                                                          pc_bw,
+                                                          proj_verts);
             glm::vec4 normal = perspectiveCorrectInterpolateAttrib(vert0.m_normal,
                                                                    vert1.m_normal,
                                                                    vert2.m_normal,
-                                                                   t,
-                                                                   proj_verts,
-                                                                   glm::vec2(x_i, scanline));
+                                                                   pc_bw,
+                                                                   proj_verts);
             float lambda = glm::clamp(glm::dot(normal, glm::normalize(-m_camera.m_forward)), 0.f, 1.f)*0.7 + 0.3;
 
             glm::vec3 color = GetImageColor({u,v}, p.mp_texture)*lambda;

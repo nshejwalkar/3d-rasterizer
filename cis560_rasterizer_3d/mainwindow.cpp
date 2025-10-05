@@ -15,6 +15,8 @@
 
 #include "camera.h"
 #include "constants.h"
+#include "debug.h"
+#include <chrono>
 
 
 void MainWindow::keyPressEvent(QKeyEvent *e)
@@ -42,8 +44,13 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
     case Qt::Key_X:     rasterizer.m_camera.rotateZ(-ROTATE_STEP); break;
     }
 
+    auto start = std::chrono::high_resolution_clock::now();
     rendered_image = rasterizer.RenderScene();
     DisplayQImage(rendered_image);
+    auto end = std::chrono::high_resolution_clock::now();
+
+    std::chrono::duration<double, std::milli> duration = end - start;
+    LOG(duration.count());
 }
 
 

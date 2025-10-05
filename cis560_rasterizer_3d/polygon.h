@@ -8,8 +8,8 @@
 // #include "segment.h"
 
 struct BarycentricWeights {
-    float s1, s2, s3;
-    BarycentricWeights(float, float, float);
+    float s1, s2, s3, pc_z;
+    BarycentricWeights(float, float, float, float);
 };
 
 // A Vertex is a point in space that defines one corner of a polygon.

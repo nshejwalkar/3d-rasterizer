@@ -24,10 +24,10 @@ public:
     Camera m_camera;
 
     Triangle projectTriangleFromWorldtoPixelSpace(const glm::mat4,
-                                                   const glm::mat4,
-                                                   const Polygon&,
-                                                   const Triangle,
-                                                   std::array<Vertex,3>&) const;
+                                                  const glm::mat4,
+                                                  const Polygon&,
+                                                  const Triangle,
+                                                  std::array<Vertex,3>&) const;
 
     QImage RenderScene();
     void ClearScene();
@@ -41,23 +41,22 @@ public:
                                                  const Triangle&,
                                                  const glm::vec2&) const; // make this const
 
-    float perspectiveCorrectInterpolateZ(const Triangle&,
-                                         std::array<Vertex,3>&,
-                                         const glm::vec2&) const;
+    BarycentricWeights perspectiveCorrectBarycentricWeights(const Triangle&,
+                                                            std::array<Vertex,3>&,
+                                                            const glm::vec2&) const;
 
     template <typename T>
     T perspectiveCorrectInterpolateAttrib(const T&,
                                           const T&,
                                           const T&,
-                                          const Triangle&,
-                                          std::array<Vertex,3>&,
-                                          const glm::vec2&) const;
+                                          const BarycentricWeights&,
+                                          std::array<Vertex,3>&) const;
 
     glm::vec4 perspectiveCorrectInterpolateAttrib(const glm::vec4&,
-                                          const glm::vec4&,
-                                          const glm::vec4&,
-                                          const Triangle&,
-                                          std::array<Vertex,3>&,
-                                          const glm::vec2&) const;
+                                                  const glm::vec4&,
+                                                  const glm::vec4&,
+                                                  const Triangle&,
+                                                  std::array<Vertex,3>&,
+                                                  const glm::vec2&) const;
 
 };

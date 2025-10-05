@@ -5,8 +5,8 @@
 #include "polygon.h"
 #include "camera.h"
 
-// #define LOG(msg) std::cout << __FILE__ << "(" << __LINE__ << "): " << msg << std::endl
-#define LOG(msg)
+#define LOG(msg) std::cout << __FILE__ << "(" << __LINE__ << "): " << msg << std::endl
+// #define LOG(msg)
 
 inline void printVertexPos(const glm::vec4& v) {
     std::cout << "(" << v[0] << ", " << v[1] << ", " << v[2] << ", " << v[3] << ")" << std::endl;

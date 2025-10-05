@@ -10,10 +10,10 @@
 
 Segment::Segment(Vertex vert1, Vertex vert2)
     : m_vertex1({vert1.m_pos[0], vert1.m_pos[1]}),
-      m_vertex2({vert2.m_pos[0], vert2.m_pos[1]}),
-      m_slope(std::fabs(m_vertex2[0]-m_vertex1[0]) < EPS
-        ? std::numeric_limits<float>::infinity()
-        : (m_vertex2[1]-m_vertex1[1])/(m_vertex2[0]-m_vertex1[0]))
+    m_vertex2({vert2.m_pos[0], vert2.m_pos[1]}),
+    m_slope(std::fabs(m_vertex2[0]-m_vertex1[0]) < EPS
+                ? std::numeric_limits<float>::infinity()
+                : (m_vertex2[1]-m_vertex1[1])/(m_vertex2[0]-m_vertex1[0]))
 {}
 
 bool Segment::checkIntersection(int y, float* x) const {
@@ -45,8 +45,8 @@ bool Segment::checkIntersection(int y, float* x) const {
 
 }
 
-BarycentricWeights::BarycentricWeights(float s1, float s2, float s3)
-    : s1(s1), s2(s2), s3(s3)
+BarycentricWeights::BarycentricWeights(float s1, float s2, float s3, float z)
+    : s1(s1), s2(s2), s3(s3), pc_z(z)
 {}
 
 
@@ -153,10 +153,10 @@ Polygon::Polygon(const QString& name, int sides, glm::vec3 color, glm::vec4 pos,
     for(int i = 0; i < sides; i++)
     {
         glm::vec4 vert_pos = glm::translate(glm::vec3(pos.x, pos.y, pos.z))
-                           * glm::rotate(rot, glm::vec3(0.f, 0.f, 1.f))
-                           * glm::scale(glm::vec3(scale.x, scale.y, scale.z))
-                           * glm::rotate(i * angle, glm::vec3(0.f, 0.f, 1.f))
-                           * v;
+        * glm::rotate(rot, glm::vec3(0.f, 0.f, 1.f))
+            * glm::scale(glm::vec3(scale.x, scale.y, scale.z))
+            * glm::rotate(i * angle, glm::vec3(0.f, 0.f, 1.f))
+            * v;
         m_verts.push_back(Vertex(vert_pos, color, glm::vec4(), glm::vec2()));
     }
 
